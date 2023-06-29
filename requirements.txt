@@ -1,3 +1,5 @@
 numpy
 matplotlib
 cvxpy
+jaxlib
+matplotlib
