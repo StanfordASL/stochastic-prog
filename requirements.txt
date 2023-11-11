@@ -3,3 +3,4 @@ matplotlib
 cvxpy
 jaxlib
 matplotlib
+ipyopt
