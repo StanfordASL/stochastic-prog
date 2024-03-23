@@ -53,12 +53,10 @@ def compute_error_metric(xs: np.array, x_true) -> float:
     """
     if not(isinstance(xs, np.ndarray)):
         raise ValueError('xs should be a numpy array.')
-    if xs.ndim != 2:
-        raise ValueError('xs should have two dimensions.')
     batch_size = xs.shape[0]
 
     xs_err = xs - x_true
-    xs_err_norms = np.linalg.norm(xs_err, axis=-1)
+    xs_err_norms = np.linalg.norm(xs_err, axis=-1) / np.linalg.norm(x_true)
     error_metric = np.median(xs_err_norms)
     return error_metric
 

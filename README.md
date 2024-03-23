@@ -30,6 +30,11 @@ python benchmark_main.py
 ```
 Executing the script may take a long time. It can be run on different machines in parallel by specifying a subset of problems to solve (`python benchmark_main.py --programs_to_solve program_6,program_27`) and later plotting the results (`python benchmark_main.py --dont_compute_true_solutions --dont_compute_saa_solutions`).
 
+For an example of trajectory optimization for a robotic manipulator, run
+```bash
+python manipulator.py
+```
+
 To reproduce the stochastic optimal control results (Section 6.2), run
 ```bash
 python mars_powered_descent.py

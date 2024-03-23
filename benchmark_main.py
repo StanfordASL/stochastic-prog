@@ -235,52 +235,53 @@ markers = ['o', 's', 'v', '^', 'p', 'X', 'd']
 # 1) data preprocessing
 # median over all problems and repeats
 # successes_saa - [len(sample_size_vec), num_repeats) for p in problems]
-succ_saa_median = np.mean(
+succ_saa_mean = np.mean(
     np.array(successes_saa), axis=(0, 2))
-succ_saa_rlx_median = np.mean(
+succ_saa_rlx_mean = np.mean(
     np.array(successes_saa_relaxed), axis=(0, 3))
 # 2) plotting
 plt.figure(figsize=[8, 4.5])
-plt.plot(sample_size_vec, 100*succ_saa_median,
+plt.plot(sample_size_vec, 100*succ_saa_mean,
     color='k', label=r'SAA ($\delta_N=0$)')
 for k, relaxation_delta_M in enumerate(delta_relaxation_vec):
-    plt.plot(sample_size_vec, 100*succ_saa_rlx_median[:, k],
+    plt.plot(sample_size_vec, 100*succ_saa_rlx_mean[:, k],
         color=colors[k], marker=markers[k], linestyle='dashed', 
         label=r'SAA, $\delta_N='+str(relaxation_delta_M)+'$')
-plt.xlabel(r"Sample Size $N$", fontsize=24)
-plt.ylabel(r"Success Rate (\%)", fontsize=24)
+plt.xlabel(r"Sample Size $N$", fontsize=28)
+plt.ylabel(r"Success Rate (\%)", fontsize=28)
 plt.xticks(fontsize=20)
 plt.yticks(fontsize=20)
 plt.grid(linestyle='--')
 plt.tight_layout()
-plt.subplots_adjust(left=0.125, right=0.99, bottom=0.16)
+plt.subplots_adjust(left=0.105, right=0.99, bottom=0.17)
 
 
 # Errors to Optimal Solution
 # 1) data preprocessing
 # mean over all problems and repeats
 # solutions_saa - [(len(sample_size_vec), num_repeats, p.num_variables) for p in problems]
-errors_saa = np.zeros((len(problems), len(sample_size_vec)))
-errors_saa_relaxed = np.zeros((len(problems), len(sample_size_vec), len(delta_relaxation_vec)))
+errors_saa = np.zeros((len(problems), len(sample_size_vec), num_repeats))
+errors_saa_relaxed = np.zeros((len(problems), len(sample_size_vec), len(delta_relaxation_vec), num_repeats))
 for i, (p_name, sol, sol_rlx) in enumerate(zip(
         problem_names, 
         solutions_saa, 
         solutions_saa_relaxed)):
     sol_true = optimal_solutions[()][p_name]
     for j, _ in enumerate(sample_size_vec):
-        sol_ij_feasible = sol[j, successes_saa[i][j]]
-        err = float("nan")
-        if np.sum(successes_saa[i][j]) > 0:
-            err = compute_error_metric(sol_ij_feasible, sol_true)
-        errors_saa[i, j] = err
-        for k, _ in enumerate(delta_relaxation_vec):
-            sol_rlx_ijk_feasible = sol_rlx[j, k, successes_saa_relaxed[i][j, k]]
-            err = float("nan")
-            if np.sum(successes_saa_relaxed[i][j, k]) > 0:
-                err = compute_error_metric(sol_rlx_ijk_feasible, sol_true)
-            errors_saa_relaxed[i, j, k] = err
-errors_saa_mean = np.median(errors_saa, axis=0)
-errors_saa_rlx_mean = np.median(errors_saa_relaxed, axis=0)
+        for r in range(num_repeats):
+            err = 1e9
+            if successes_saa[i][j, r] > 0:
+                err = np.linalg.norm(sol[j, r] - sol_true, axis=-1) / (
+                    np.linalg.norm(1 + sol_true, axis=-1))
+            errors_saa[i, j, r] = err
+            for k, _ in enumerate(delta_relaxation_vec):
+                err = 1e9
+                if successes_saa_relaxed[i][j, k, r]:
+                    err = np.linalg.norm(sol_rlx[j, k, r] - sol_true, axis=-1) / (
+                        np.linalg.norm(1 + sol_true, axis=-1))
+                errors_saa_relaxed[i, j, k, r] = err
+errors_saa_mean = np.median(errors_saa, axis=(0, 2))
+errors_saa_rlx_mean = np.median(errors_saa_relaxed, axis=(0, 3))
 # 2) plotting
 plt.figure(figsize=[8, 4.5])
 plt.plot(sample_size_vec, errors_saa_mean,
@@ -289,14 +290,84 @@ for k, relaxation_delta_M in enumerate(delta_relaxation_vec):
     plt.plot(sample_size_vec, errors_saa_rlx_mean[:, k],
         color=colors[k], marker=markers[k], linestyle='dashed', 
         label=r'SAA, $\delta_N='+str(relaxation_delta_M)+'$')
-plt.xlabel(r"Sample Size $N$", fontsize=24)
-plt.ylabel(r"Solution Error $\|u_N(\bar\omega)-u^\star\|$", fontsize=24)
+plt.xlabel(r"Sample Size $N$", fontsize=28)
+plt.ylabel(r"Solution Error", fontsize=28)
 plt.xticks(fontsize=20)
 plt.yticks(fontsize=20)
 plt.legend(fontsize=20, labelspacing=0.2)
 plt.grid(linestyle='--')
 plt.tight_layout()
-plt.subplots_adjust(left=0.11, right=0.99, bottom=0.16)
+plt.subplots_adjust(left=0.105, right=0.99, bottom=0.17)
+
+
+
+
+# Errors to Optimal Value
+# objectives_saa - [(len(sample_size_vec), num_repeats)
+#                       for p in problems]
+# objectives_saa_relaxed - [len(sample_size_vec), len(delta_relaxation_vec), num_repeats)
+#                       for p in problems]
+# 1a) data preprocessing
+# compute objective values (what is saved in objectives_saa is the sample
+# approximated objective value)
+errors_saa = np.zeros((len(problems), len(sample_size_vec)))
+errors_saa_relaxed = np.zeros((len(problems), len(sample_size_vec), len(delta_relaxation_vec)))
+for i, (problem, p_name, sol, sol_rlx) in enumerate(zip(
+        problems,
+        problem_names,
+        solutions_saa,
+        solutions_saa_relaxed)):
+    assert problem.name == p_name
+    program = StochasticTrueAverageValueProgram(problem)
+    obj_true = optimal_objectives[()][p_name]
+    for j, _ in enumerate(sample_size_vec):
+        for r in range(num_repeats):
+            objectives_saa[i][j, r] = program.objective(sol[j, r])
+            for k, _ in enumerate(delta_relaxation_vec):
+                objectives_saa_relaxed[i][j, k, r] = program.objective(
+                    sol_rlx[j, k, r])
+# 1b) compute errors
+# median over all problems and repeats
+errors_saa = np.zeros((
+    len(problems), len(sample_size_vec), num_repeats))
+errors_saa_relaxed = np.zeros((
+    len(problems), len(sample_size_vec), len(delta_relaxation_vec), num_repeats))
+for i, (p_name, obj, obj_rlx) in enumerate(zip(
+        problem_names,
+        objectives_saa,
+        objectives_saa_relaxed)):
+    obj_true = optimal_objectives[()][p_name]
+    for j, _ in enumerate(sample_size_vec):
+        for r in range(num_repeats):
+            err = 1e9
+            if successes_saa[i][j, r]:
+                err = np.abs((obj[j, r] - obj_true) / (1 + np.abs(obj_true)))
+            errors_saa[i, j, r] = err
+            for k, _ in enumerate(delta_relaxation_vec):
+                for r in range(num_repeats):
+                    err = 1e9
+                    if successes_saa_relaxed[i][j, k, r]:
+                        err = np.abs((obj_rlx[j, k, r] - obj_true) / (1 + np.abs(obj_true)))
+                    errors_saa_relaxed[i, j, k, r] = err
+errors_saa_mean = np.median(errors_saa, axis=(0, 2))
+errors_saa_rlx_mean = np.median(errors_saa_relaxed, axis=(0, 3))
+# 2) plotting
+plt.figure(figsize=[8, 4.5])
+plt.plot(sample_size_vec, errors_saa_mean,
+    color='k', label=r'SAA ($\delta=0$)')
+for k, relaxation_delta_M in enumerate(delta_relaxation_vec):
+    plt.plot(sample_size_vec, errors_saa_rlx_mean[:, k],
+        color=colors[k], marker=markers[k], linestyle='dashed',
+        label=r'SAA, $\delta_N='+str(relaxation_delta_M)+'$')
+plt.xlabel(r"Sample Size $N$", fontsize=28)
+plt.ylabel(r"Optimal Value Error", fontsize=28)
+plt.xticks(fontsize=20)
+plt.yticks(fontsize=20)
+plt.legend(fontsize=20, labelspacing=0.2)
+plt.grid(linestyle='--')
+plt.tight_layout()
+plt.subplots_adjust(left=0.11, right=0.99, bottom=0.17)
+
 
 
 plt.show()
