@@ -1,7 +1,7 @@
 # Sample Average Approximation for Stochastic Programming with Equality Constraints
 
 ## About
-Code to reproduce numerical results in our paper about sampling-based stochastic programming (T. Lew, R. Bonalli, M. Pavone, "Sample Average Approximation for Stochastic Programming with Equality Constraints", available at [https://arxiv.org/abs/2112.05745](https://arxiv.org/abs/2206.09963), 2023).
+Code to reproduce numerical results in T. Lew, R. Bonalli, and M. Pavone, "Sample Average Approximation for Stochastic Programming with Equality Constraints," SIAM Journal on Optimization, 2024. A preprint is available at [https://arxiv.org/abs/2206.09963](https://arxiv.org/abs/2206.09963).
 <p align="center">
   <img src="figures/mars_descent.png" width="70%"/>
   <br /><em>Mars rocket-powered descent results.</em>
